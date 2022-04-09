@@ -327,6 +327,10 @@ Bit mode: 2;    // mode 占 2 位
 
 ### extern "C"
 
+https://zhuanlan.zhihu.com/p/114669161
+
+C++中用于使用gcc编译的库时，需要在header里用extern "C"使用，不然会因为gcc与g++编译的区别导致无法正确链接使用
+
 * 被 extern 限定的函数或变量是 extern 类型的
 * 被 `extern "C"` 修饰的变量和函数是按照 C 语言方式编译和链接的
 
