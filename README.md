@@ -53,6 +53,217 @@
 
 ## ➕ C/C++
 
+### 数组与指针的关系
+
+数组int a[5] 的类型是 int[5] 并不是指针本身;数组名是一个地址，而非指针，虽然两者数值相同，但是不是同一个东西；数组类型的指针表示为int[5] * （或者 int (*)[5] ), 数组指针定义可以为int (*p)[5] = &a;
+
+**之所以会将数组与指针搞混**，是因为&a 默认返回的是&a[0]相同的结果，也就是数组的起始地址，并且&a, a, &a[0]返回的值都是相同的；另外，
+通常执行int *p = a 的时候，可能会错误将a的类型看做指针，实际上这里执行了隐式的转换，如果优雅取得起始地址，推荐使用&a[0]。
+
+https://stackoverflow.com/questions/3959705/are-arrays-pointers
+> int arr[10] = {0,1,2,3,4,5,6,7,8,9};
+> int *parr = arr;
+
+> arr is a 10-element array of int; it refers to a contiguous block of memory large enough to store 10 int values. The expression arr in the second declaration is of array type, but since it is not the operand of & or sizeof and it isn't a string literal, the type of the expression becomes "pointer to int", and the value is the address of the first element, or &arr[0].
+
+
+> A reference to an object of type array-of-T which appears in an expression decays (with **three exceptions**) into a pointer to its first element; the type of the resultant pointer is pointer-to-T. 
+
+https://www.programiz.com/cpp-programming/pointers-arrays
+https://stackoverflow.com/questions/17752978/exceptions-to-array-decaying-into-a-pointer
+
+C++ Primer：数组隐式转换成指针的5种例外。https://blog.csdn.net/qq_34801642/article/details/104021024
+1. decltype关键字
+2. 取地址符（&）
+3. sizeof关键字
+4. typeid关键字
+5. 数组的引用
+
+```cpp
+#include <iostream>
+
+struct S {
+    char a[1];
+};
+
+int main() {
+    int var1;     //int
+    char var2[10];//char[10]
+
+    char *var2_p1 = var2;      // 这里应该有隐式转换
+//    char *var2_p1 = (char *)var2;      // 这里应该有隐式转换
+
+    char(*var2_p2)[10] = &var2;// 这里是显示转换为 char(*)[10] 指针
+
+    printf("var1 变量的地址： %p\n", &var1);
+
+    printf("var2 变量的地址： %p\n", &var2);//这里输出的似乎并不是var2数据的地址，而是该数组的起始地址，与下式结果是一样的
+    printf("var2 变量的值： %p\n", var2); //这里非常奇怪，因为没有地方存储var2变量名，但是可以输出一个地址（应该是编译器行为）
+    printf("var2[0] 变量的地址： %p\n", &var2[0]);
+
+    printf("var2_p1变量的地址： %p\n", var2_p1);
+
+    printf("var2_p2变量的地址： %p\n", &var2_p2);
+    printf("var2_p2变量的值： %p\n", var2_p2);
+
+    std::cout << sizeof (S) << std::endl;
+    return 0;
+}
+```
+
+**数组无法作为实参传入**
+
+> 这个事情就没有什么道理，因为直接写数组 int something[10]不可以，但是包到一个struct里面就可以了，说明就是设计偏好的问题，底层实现上没有障碍。无非就是当时设计C语言的人觉得数组能自动转换成指针很方便，所以就规定了传递数组永远等于传递指针，而忽略了数组大小这个隐含的类型参数，导致C变成了现在这个样子，然后C++就继承过去了而已。实际上C++中可以传递数组的引用，只是直接按值传递数组不可以而已。
+
+> 函数的参数在编译时，参数和临时变量等大小已经决定（栈空间大小），因此无法传入长度可能不定的一个参数。
+
+> void DoSth(int a[4]){
+> }
+> 即便你这样传入，你的编译器也会认为你传入的是一个int *。
+> int arr[5] = {0,0,0,0,0};
+> DoSth(arr);
+> 编译器也不会判你为错误，用一个词叫退化(decay),你的int a[4]会退化成为一个int *a
+> 退化（decay)是隐式转换的一部分
+
+
+在 C++中，数组永远不会按值传递，数组是被传递为指针的，传递的是第0个元素的地址。
+
+例如声明：void fun(int[10]);
+
+编译器会视为：void fun(int*);
+
+数组的长度与参数声明无关，下面三个等价：
+
+void fun(int[10]);
+void fun(int[]);
+void fun(int*);
+因此fun对参数数组的改变将直接应用在数组实参上，如果想防止修改，可以加const。
+
+数组长度不是参数类型的一部分，函数不会检查长度。
+
+将参数声明为数组的引用，数组长度就成为参数和实参类型的一部分，编译器还会检查数组实参的长度与函数参数类型中指定的长度是否匹配。
+
+https://blog.csdn.net/jiangxinyu/article/details/7767065
+
+C++为何不允许在函数中直接传递数组？ - 采薇东篱下的回答 - 知乎
+https://www.zhihu.com/question/402177743/answer/1295279990
+
+https://www.junhaow.com/2018/10/01/039%20%7C%20%E9%9A%90%E5%BC%8F%E8%BD%AC%E6%8D%A2%EF%BC%9A%E6%8A%8A%20C%20%E8%AF%AD%E8%A8%80%E6%95%B0%E7%BB%84%E8%BD%AC%E6%8D%A2%E4%B8%BA%E6%8C%87%E9%92%88/
+
+```cpp
+// 测试array自动转换到pointer的情况；以及pointer类型对于+1的影响
+
+#include <iostream>
+
+void func1(int* a){
+    printf("The value of a+0 is: %d\n", *a);
+    printf("The value of a+1 is: %d\n", *(a+1));
+}
+
+void func2(int (*b)[3]){
+    printf("The value of a+0 is: %d\n", (*b)[0]); // (*b) 获得int[3]类型，再去取第一个位置
+    printf("The value of a+1 is: %d\n", (*(b+1))[0]); // (*(b+1))获取第二行的int[3]类型的数据，
+}
+
+void func3(int *b){
+    printf("The value of a+0 is: %d\n", *b); // (*b) 获得int[3]类型，再去取第一个位置
+    printf("The value of a+3 is: %d\n", *(b+3)); // (*(b+1))获取第二行的int[3]类型的数据，
+}
+
+
+int main() {
+    int a[4] = {1,2,3,4};
+    int b[2][3] = {{0, 1, 2},
+                   {3, 4, 5}};
+
+    printf("The address of b is: %p\n", b);
+    printf("The address of a is: %p\n", a);
+
+    // 数组变量大部分情况会被隐式转化为第一个元素的地址指针，等同于 int * a_pointer = &a[0]
+    func1(a); // int[n]类型隐式转为 int *
+    func2(b); // int[n][m]类型隐式转为 int(*)[m]
+    func3((int*)b); // 需要显示转换b为int * ;这里应该会先隐式将b转为int(*)[3] 再转为 int *
+
+    return 0;
+}
+```
+
+数组与指针
+https://blog.csdn.net/luckyxiaoqiang/article/details/7044380#:~:text=%E4%B8%80%E3%80%81%E6%95%B0%E7%BB%84%E4%B8%8E%E6%8C%87%E9%92%88%E7%9A%84,%2C2%2C3%2C4%7D%3B
+
+如果仅仅是不退化是可以做到的：
+
+void Dosth1(int (&arr)[4]){}
+这样就可以完成题目的愿望，或者你可以仍然认为我没有完成因为：
+
+void Dosth1(int (&arr)[4]){
+  std::cout<< typeid(arr).name()<<"\n"; // A4_i (在我的电脑上)
+}
+
+这样也不好，限定了传入数组的长度
+
+### 数组指针传参和引用传参的区别
+https://blog.csdn.net/liuhhaiffeng/article/details/54020513
+引用传参的话，本质上应该理解为*(&array)/ 指针传参理解为 &array[0]; 两者的层次不同；并且指针可以相对于引用多接收更多不同大小的数组。
+
+
+size的练习
+
+```cpp
+#include<iostream>                        
+using namespace std;
+int main()
+{
+	int a[6][8]={0};
+	int (*p)[8];
+	p=&a[0];    
+	int (*pp)[6][8]; 
+	pp=&a;
+ 
+	cout<<sizeof(a)<<endl;        // 192
+	cout<<sizeof(*a)<<endl;       // 32 等同于 *（&a[0]）
+	cout<<sizeof(&a)<<endl;       // 4
+	cout<<sizeof(a[0])<<endl;     // 32
+	cout<<sizeof(*a[0])<<endl;    // 4
+	cout<<sizeof(&a[0])<<endl;    // 4
+	cout<<sizeof(a[0][0])<<endl;  // 4
+	cout<<sizeof(&a[0][0])<<endl; // 4
+	cout<<sizeof(p)<<endl;        // 4
+	cout<<sizeof(*p)<<endl;       // 32
+	cout<<sizeof(&p)<<endl;       // 4
+	cout<<sizeof(pp)<<endl;       // 4
+	cout<<sizeof(*pp)<<endl;      // 192
+	cout<<sizeof(&pp)<<endl;      // 4 
+ 
+	system("pause");
+	return 0;
+}
+```
+
+#### 数组作为函数参数
+当数组作为函数参数传入时，数组退化为指针，类型是第一个元素的地址类型。“数组名被改写成一个指针参数”，这个规则并不是递归定义的。数组的数组会被改写为“数组的指针”，而不是“指针的指针”。
+下面给出几个例子：
+fun1(char s[10])
+{
+// s在函数内部实际的类型是char *；
+}
+
+fun2(char s[][10])
+{
+// s在函数内部的实际类型是char(*) [10]，即char [10]数组的指针；
+}
+
+fun3(char *s[15])
+{
+// s在函数内部的实际类型是char **，字符型指针的指针；
+}
+
+fun4(char(*s)[20])
+{
+// s在函数内部的实际类型不变，仍然是char(*) [20]，即char [20]数组的指针；
+}
+以上可以简单的归纳为数组作为参数被改写为指向数组的第一个元素（这里的元素可以是数组）的指针。数组作为参数必须提供除了最左边一维以外的所有维长度。我们还要注意char s[][10]和char ** s作为函数参数是不一样的，因为函数内部指针的类型不一样的，尤其在进行指针加减运算以及sizeof运算时。
+
 ### const
 
 #### 作用
@@ -122,16 +333,25 @@ const int* function6();     // 返回一个指向常量的指针变量，使用�
 int* const function7();     // 返回一个指向变量的常指针，使用：int* const p = function7();
 ```
 
+### const 实参与形参
+https://blog.csdn.net/xiaokunzhang/article/details/80977375
+const 形参可以接受非const和const实参； 非const形参无法接收const实参（这是可以使用const_cast）。
+
+作为*或者&传入时需要考虑上诉表达，如果只是传值不需要，因为会拷贝构造新的数据。
+
+其他的参考情况
+https://blog.csdn.net/xiaokunzhang/article/details/80977375 
+
 #### 宏定义 #define 和 const 常量 
 
-宏定义 #define|const 常量
----|---
-宏定义，相当于字符替换|常量声明
-预处理器处理|编译器处理
-无类型安全检查|有类型安全检查
-不分配内存|要分配内存
-存储在代码段|存储在数据段
-可通过 `#undef` 取消|不可取消
+| 宏定义 #define         | const 常量     |
+| ---------------------- | -------------- |
+| 宏定义，相当于字符替换 | 常量声明       |
+| 预处理器处理           | 编译器处理     |
+| 无类型安全检查         | 有类型安全检查 |
+| 不分配内存             | 要分配内存     |
+| 存储在代码段           | 存储在数据段   |
+| 可通过 `#undef` 取消   | 不可取消       |
 
 ### static
 
@@ -141,6 +361,56 @@ int* const function7();     // 返回一个指向变量的常指针，使用：i
 2. 修饰普通函数，表明函数的作用范围，仅在定义该函数的文件内才能使用。在多人开发项目时，为了防止与他人命名空间里的函数重名，可以将函数定位为 static。
 3. 修饰成员变量，修饰成员变量使所有的对象只保存一个该变量，而且不需要生成对象就可以访问该成员。
 4. 修饰成员函数，修饰成员函数使得不需要生成对象就可以访问该函数，但是在 static 函数内不能访问非静态成员。
+
+```cpp
+#include <iostream>
+#include <ctime>
+#include <cstdlib>
+ 
+using namespace std;
+ 
+// 要生成和返回随机数的函数
+int * getRandom( )
+{
+  static int  r[10];
+ 
+  // 设置种子
+  srand( (unsigned)time( NULL ) );
+  for (int i = 0; i < 10; ++i)
+  {
+    r[i] = rand();
+    cout << r[i] << endl;
+  }
+ 
+  return r;
+}
+ 
+// 要调用上面定义函数的主函数
+int main ()
+{
+   // 一个指向整数的指针
+   int *p;
+ 
+   p = getRandom();
+   for ( int i = 0; i < 10; i++ )
+   {
+       cout << "*(p + " << i << ") : ";
+       cout << *(p + i) << endl;
+   }
+ 
+   return 0;
+}
+```
+
+静态变量并不是说其就不能改变值，不能改变值的量叫常量。 其拥有的值是可变的 ，而且它会保持最新的值。说其静态，是因为它不会随着函数的调用和退出而发生变化。即上次调用函数的时候，如果我们给静态变量赋予某个值的话，下次函数调用时，这个值保持不变。
+静态变量 类型说明符是static。
+ 静态变量属于静态存储方式，其存储空间为内存中的静态数据区（在 静态存储区内分配存储单元），该区域中的数据在整个程序的运行期间一直占用这些存储空间（在程序整个运行期间都不释放），也可以认为是其内存地址不变，直 到整个程序运行结束（相反，而auto自动变量，即动态局部变量，属于动态存储类别，占动态存储空间，函数调用结束后即释放）。静态变量虽在程序的整个执 行过程中始终存在，但是在它作用域之外不能使用。
+ 另外，属于静态存储方式的量不一定就是静态变量。 例如：外部变量虽属于静态存储方式，但不一定是静态变量，必须由 static加以定义后才能成为静态外部变量，或称静态全局变量。
+ 所有的全局变量都是静态变量，而局部变量只有定义时加上类型修饰符static，才为局部静态变量。
+ 静态变量可以在任何可以申请的地方申请，一旦申请成功后，它将不再接受其他的同样申请。
+————————————————
+版权声明：本文为CSDN博主「LaugustusJ」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/qq_16334327/article/details/78201434
 
 ### this 指针
 
@@ -296,6 +566,58 @@ assert( p != NULL );    // assert 不可用
 ### #pragma pack(n)
 
 设定结构体、联合以及类成员变量以 n 字节方式对齐
+
+**字节对齐**
+
+  > 字节对齐是为了方面取数据，因为计算机取数据是按照每一次的寻址进行操作的，所以如果一个数据的存放跨过两次寻址，就会导致两次读取操作，则需要进行对齐；如果对与两次char char，则可以共同存放在一个对齐字节内; 排放是有序的，且基本数据类型的对齐大小为(其自身 可能并不对)（**min(自身,pack)**）的大小，结构体数据类型的对齐大小为 **min(struct中最大对齐元素大小,pack)**， 请参考 https://zhuanlan.zhihu.com/p/26122273 https://zhuanlan.zhihu.com/p/85970557
+
+https://blog.51cto.com/yang/2900013
+**32、64位系统的区别**
+  > 最关键的区别就是两者访问数据的方式，按理来说两者的数据总线和地址总线应该分别都是32、64位。不过具体来说，对于地址总线，64位并不会完全使用；地址总线决定了内存可以访问数据的大小（4gb或者16gb)；数据总线涉及到一次读取数据的速度，所以64位会快。
+
+```c++
+//
+// Created by 陈智 on 2022/4/11.
+//
+#include "iostream"
+#pragma pack(4)
+
+struct Data1 {
+    char a[2];
+};
+//vs 前者是两个char, 后者是一个地址
+//vs 前者是两个char, 后者是一个地址
+struct Data11 {
+    char* a;
+};
+
+struct Data2 {
+    char a; // 此处不论pack是多少都是1，这是因为struct整体会是min(pack,元素中最大的字节)的倍数
+};
+
+struct student
+{
+  char           a;  //是1个字节
+  short          b;  //是2个字节
+  int            c;  //是4个字节
+  float          d;  //是4个字节
+  double         e;  //是8个字节
+  unsigned char  g;  //是1个字节
+  unsigned short h;  //是2个字节
+  unsigned int   i;  //是4个字节
+};
+
+
+int main() {
+    std::cout << sizeof(Data1) << std::endl;
+    std::cout << sizeof(Data11) << std::endl;
+    std::cout << sizeof(Data2) << std::endl;
+
+    printf("%d\n",sizeof(student));
+    return 1;
+}
+
+```
 
 #pragma pack(n) 使用
 
@@ -711,6 +1033,13 @@ auto fcn2(It beg, It end) -> typename remove_reference<decltype(*beg)>::type
 
 ### 成员初始化列表
 
+注意：
+
+1. 初始化顺序应该与定义的顺序一致，这是因为对象生成时会先用默认值占据空间，如果此时有成员列表初始化，占据空间时就可以同时完成赋值，节省操作，并且开辟空间时按顺序的，所以初始化成员列表也应该按顺序排布
+https://www.youtube.com/watch?v=1nfuYMXjZsA
+
+https://www.runoob.com/w3cnote/cpp-construct-function-initial-list.html
+
 好处
 
 * 更高效：少了一次调用默认构造函数的过程。
@@ -817,7 +1146,7 @@ int main()
     3. 参数多态性（Parametric Polymorphism，编译期）：类模板、函数模板
     4. 强制多态（Coercion Polymorphism，编译期/运行期）：基本类型转换、自定义类型转换
 
-> [The Four Polymorphisms in C++](https://catonmat.net/cpp-polymorphism)
+> ![The Four Polymorphisms in C++](https://catonmat.net/cpp-polymorphism)
 
 #### 静态多态（编译期/早绑定）
 
@@ -912,6 +1241,107 @@ int main()
 }
 ```
 
+### 深入理解虚函数表
+https://www.cnblogs.com/Mered1th/p/10924545.html
+
+同时继承时会有多个虚函数表，重写会在所有的父类虚函数表中执行，没有出现的子类虚函数只添加在第一个虚函数表中。
+https://blog.csdn.net/qq_36359022/article/details/81870219
+
+https://blog.csdn.net/Li_Ning_/article/details/51893748
+
+https://www.jianshu.com/p/2aaedc410b0e
+```cpp
+//
+// Created by 陈智 on 2022/4/11.
+//
+#include <iostream>
+
+using namespace std;
+
+class Base {
+public:
+    Base() : a(1) {}
+
+    int a;
+
+    // 无论int是否在virtual函数前，虚函数指针地址vfptr都在类的起始地址
+    virtual void f() { cout << "f()" << endl; }
+
+    virtual void g() { cout << "g()" << endl; }
+};
+
+class Base1 {
+public:
+    Base1() : b(2) {}
+
+    int b;
+
+    virtual void h() { cout << "h()" << endl; }
+
+    virtual void i() { cout << "i()" << endl; }
+};
+
+class Derived : public Base, public Base1 {
+public:
+    Derived() : c(3) {}
+
+    int c;
+
+    virtual void j() { cout << "j()" << endl; }
+};
+
+int main() {
+    Base t;
+
+    // 下面代码无法正确运行，一方面是因为是64位，用int*取地址不合理
+//	(     ((void(*)())*((int*)(*((int*)&t)) + 0))   )     ();
+//	(     ((void(*)())*((int*)(*((int*)&t)) + 1))   )     ();
+
+    long *vtptr = (long *) (*((long *) &t));
+    typedef void(*Func)();
+
+    //修改为8字节的long类型执行
+    ((Func) *(vtptr + 0))();
+    ((Func) *(vtptr + 1))();
+
+    printf("--------------------\n");
+
+
+    Derived *d = new Derived();
+    cout << d->a << " " << d->b << " " << d->c << endl;
+    d->f();
+    d->h();
+    d->j();
+    printf("--------------------\n");
+
+    long *d_prt = (long *) d;
+    long *vtptr1 = (long *) (*(d_prt));
+    long *vtptr2 = (long *) (*(d_prt + 2)); // 这里为什么是+2； 因为首先初始地址为Base的vtptr占据八个字节，后续int a占用四个；
+                                            // 后续再分配Base1的vtptr, 并且要保持字节对齐，所以总共间隔2个八字节
+
+    cout << d << endl;
+    cout << &d->a << endl;
+    cout << &d->b << endl;
+    cout << &d->c << endl;
+
+    cout << "Third element after vtptr: " << *(int *) ((int *) d_prt + 5) << endl; // a 不是从+4开始，有点奇怪
+    cout << "Third element after vtptr: " << *(int *) ((int *) d_prt + 6) << endl; // b
+    cout << "Third element after vtptr: " << *(int *) ((int *) d_prt + 7) << endl; // c
+
+    //修改为8字节的long类型执行
+    ((Func) *(vtptr1 + 0))();
+    ((Func) *(vtptr1 + 1))();
+    ((Func) *(vtptr1 + 2))(); // 这里直接就是Derived定义的虚函数
+//	((Func)*(vtptr1 + 3))(); // 这里不是Base1的虚函数
+//	((Func)*(vtptr1 + 4))();
+
+    ((Func) *(vtptr2 + 0))(); //这里地址不对
+    ((Func) *(vtptr2 + 1))();
+
+    return 0;
+}
+
+```
 ### 纯虚函数
 
 纯虚函数是一种特殊的虚函数，在基类中不能对虚函数给出有意义的实现，而把它声明为纯虚函数，它的实现留给该基类的派生类去做。
@@ -936,6 +1366,10 @@ virtual int A() = 0;
 * 虚函数表：在程序只读数据段（`.rodata section`，见：[目标文件存储结构](#%E7%9B%AE%E6%A0%87%E6%96%87%E4%BB%B6%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84)），存放虚函数指针，如果派生类实现了基类的某个虚函数，则在虚表中覆盖原本基类的那个虚函数指针，在编译时根据类的声明创建。
 
 > [C++中的虚函数(表)实现机制以及用C语言对其进行的模拟实现](https://blog.twofei.com/496/)
+
+### 重写与重定义
+重定义是不带virtual的子类函数，会自动隐藏父类同名函数；重写是virtual函数重写；一般情况下使用重写实现多态，比较合理。
+https://blog.csdn.net/u010275850/article/details/45583705
 
 ### 虚继承
 
@@ -1343,31 +1777,31 @@ int main(){
 
 ### STL 容器
 
-容器 | 底层数据结构 | 时间复杂度 | 有无序 | 可不可重复 | 其他
----|---|---|---|---|---
-[array](https://github.com/huihut/interview/tree/master/STL#array)|数组|随机读改 O(1)|无序|可重复|支持随机访问
-[vector](https://github.com/huihut/interview/tree/master/STL#vector)|数组|随机读改、尾部插入、尾部删除 O(1)<br/>头部插入、头部删除 O(n)|无序|可重复|支持随机访问
-[deque](https://github.com/huihut/interview/tree/master/STL#deque)|双端队列|头尾插入、头尾删除 O(1)|无序|可重复|一个中央控制器 + 多个缓冲区，支持首尾快速增删，支持随机访问
-[forward_list](https://github.com/huihut/interview/tree/master/STL#forward_list)|单向链表|插入、删除 O(1)|无序|可重复|不支持随机访问
-[list](https://github.com/huihut/interview/tree/master/STL#list)|双向链表|插入、删除 O(1)|无序|可重复|不支持随机访问
-[stack](https://github.com/huihut/interview/tree/master/STL#stack)|deque / list|顶部插入、顶部删除 O(1)|无序|可重复|deque 或 list 封闭头端开口，不用 vector 的原因应该是容量大小有限制，扩容耗时
-[queue](https://github.com/huihut/interview/tree/master/STL#queue)|deque / list|尾部插入、头部删除 O(1)|无序|可重复|deque 或 list 封闭头端开口，不用 vector 的原因应该是容量大小有限制，扩容耗时
-[priority_queue](https://github.com/huihut/interview/tree/master/STL#priority_queue)|vector + max-heap|插入、删除 O(log<sub>2</sub>n)|有序|可重复|vector容器+heap处理规则
-[set](https://github.com/huihut/interview/tree/master/STL#set)|红黑树|插入、删除、查找 O(log<sub>2</sub>n)|有序|不可重复|
-[multiset](https://github.com/huihut/interview/tree/master/STL#multiset)|红黑树|插入、删除、查找 O(log<sub>2</sub>n)|有序|可重复|
-[map](https://github.com/huihut/interview/tree/master/STL#map)|红黑树|插入、删除、查找 O(log<sub>2</sub>n)|有序|不可重复|
-[multimap](https://github.com/huihut/interview/tree/master/STL#multimap)|红黑树|插入、删除、查找 O(log<sub>2</sub>n)|有序|可重复|
-[unordered_set](https://github.com/huihut/interview/tree/master/STL#unordered_set)|哈希表|插入、删除、查找 O(1) 最差 O(n)|无序|不可重复|
-[unordered_multiset](https://github.com/huihut/interview/tree/master/STL#unordered_multiset)|哈希表|插入、删除、查找 O(1) 最差 O(n)|无序|可重复|
-[unordered_map](https://github.com/huihut/interview/tree/master/STL#unordered_map)|哈希表|插入、删除、查找 O(1) 最差 O(n)|无序|不可重复|
-[unordered_multimap](https://github.com/huihut/interview/tree/master/STL#unordered_multimap)|哈希表|插入、删除、查找 O(1) 最差 O(n)|无序|可重复|
+| 容器                                                                                         | 底层数据结构      | 时间复杂度                                                    | 有无序 | 可不可重复 | 其他                                                                         |
+| -------------------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------- | ------ | ---------- | ---------------------------------------------------------------------------- |
+| [array](https://github.com/huihut/interview/tree/master/STL#array)                           | 数组              | 随机读改 O(1)                                                 | 无序   | 可重复     | 支持随机访问                                                                 |
+| [vector](https://github.com/huihut/interview/tree/master/STL#vector)                         | 数组              | 随机读改、尾部插入、尾部删除 O(1)<br/>头部插入、头部删除 O(n) | 无序   | 可重复     | 支持随机访问                                                                 |
+| [deque](https://github.com/huihut/interview/tree/master/STL#deque)                           | 双端队列          | 头尾插入、头尾删除 O(1)                                       | 无序   | 可重复     | 一个中央控制器 + 多个缓冲区，支持首尾快速增删，支持随机访问                  |
+| [forward_list](https://github.com/huihut/interview/tree/master/STL#forward_list)             | 单向链表          | 插入、删除 O(1)                                               | 无序   | 可重复     | 不支持随机访问                                                               |
+| [list](https://github.com/huihut/interview/tree/master/STL#list)                             | 双向链表          | 插入、删除 O(1)                                               | 无序   | 可重复     | 不支持随机访问                                                               |
+| [stack](https://github.com/huihut/interview/tree/master/STL#stack)                           | deque / list      | 顶部插入、顶部删除 O(1)                                       | 无序   | 可重复     | deque 或 list 封闭头端开口，不用 vector 的原因应该是容量大小有限制，扩容耗时 |
+| [queue](https://github.com/huihut/interview/tree/master/STL#queue)                           | deque / list      | 尾部插入、头部删除 O(1)                                       | 无序   | 可重复     | deque 或 list 封闭头端开口，不用 vector 的原因应该是容量大小有限制，扩容耗时 |
+| [priority_queue](https://github.com/huihut/interview/tree/master/STL#priority_queue)         | vector + max-heap | 插入、删除 O(log<sub>2</sub>n)                                | 有序   | 可重复     | vector容器+heap处理规则                                                      |
+| [set](https://github.com/huihut/interview/tree/master/STL#set)                               | 红黑树            | 插入、删除、查找 O(log<sub>2</sub>n)                          | 有序   | 不可重复   |
+| [multiset](https://github.com/huihut/interview/tree/master/STL#multiset)                     | 红黑树            | 插入、删除、查找 O(log<sub>2</sub>n)                          | 有序   | 可重复     |
+| [map](https://github.com/huihut/interview/tree/master/STL#map)                               | 红黑树            | 插入、删除、查找 O(log<sub>2</sub>n)                          | 有序   | 不可重复   |
+| [multimap](https://github.com/huihut/interview/tree/master/STL#multimap)                     | 红黑树            | 插入、删除、查找 O(log<sub>2</sub>n)                          | 有序   | 可重复     |
+| [unordered_set](https://github.com/huihut/interview/tree/master/STL#unordered_set)           | 哈希表            | 插入、删除、查找 O(1) 最差 O(n)                               | 无序   | 不可重复   |
+| [unordered_multiset](https://github.com/huihut/interview/tree/master/STL#unordered_multiset) | 哈希表            | 插入、删除、查找 O(1) 最差 O(n)                               | 无序   | 可重复     |
+| [unordered_map](https://github.com/huihut/interview/tree/master/STL#unordered_map)           | 哈希表            | 插入、删除、查找 O(1) 最差 O(n)                               | 无序   | 不可重复   |
+| [unordered_multimap](https://github.com/huihut/interview/tree/master/STL#unordered_multimap) | 哈希表            | 插入、删除、查找 O(1) 最差 O(n)                               | 无序   | 可重复     |
 
 ### STL 算法
 
-算法 | 底层算法 | 时间复杂度 | 可不可重复
----|---|---|---
-[find](http://www.cplusplus.com/reference/algorithm/find/)|顺序查找|O(n)|可重复
-[sort](https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/include/bits/stl_algo.h#L4808)|[内省排序](https://en.wikipedia.org/wiki/Introsort)|O(n*log<sub>2</sub>n)|可重复
+| 算法                                                                                             | 底层算法                                            | 时间复杂度            | 可不可重复 |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------- | --------------------- | ---------- |
+| [find](http://www.cplusplus.com/reference/algorithm/find/)                                       | 顺序查找                                            | O(n)                  | 可重复     |
+| [sort](https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/include/bits/stl_algo.h#L4808) | [内省排序](https://en.wikipedia.org/wiki/Introsort) | O(n*log<sub>2</sub>n) | 可重复     |
 
 
 <a id="data-structure"></a>
@@ -1769,18 +2203,18 @@ B 树、B+ 树图片
 
 ### 排序
 
-排序算法 | 平均时间复杂度 | 最差时间复杂度 | 空间复杂度 | 数据对象稳定性
----|---|---|---|---
-[冒泡排序](Algorithm/BubbleSort.h) | O(n<sup>2</sup>)|O(n<sup>2</sup>)|O(1)|稳定
-[选择排序](Algorithm/SelectionSort.h) | O(n<sup>2</sup>)|O(n<sup>2</sup>)|O(1)|数组不稳定、链表稳定
-[插入排序](Algorithm/InsertSort.h) | O(n<sup>2</sup>)|O(n<sup>2</sup>)|O(1)|稳定
-[快速排序](Algorithm/QuickSort.h) | O(n*log<sub>2</sub>n) |  O(n<sup>2</sup>) | O(log<sub>2</sub>n) | 不稳定
-[堆排序](Algorithm/HeapSort.cpp) | O(n*log<sub>2</sub>n)|O(n*log<sub>2</sub>n)|O(1)|不稳定
-[归并排序](Algorithm/MergeSort.h) | O(n*log<sub>2</sub>n) | O(n*log<sub>2</sub>n)|O(n)|稳定
-[希尔排序](Algorithm/ShellSort.h) | O(n*log<sup>2</sup>n)|O(n<sup>2</sup>)|O(1)|不稳定
-[计数排序](Algorithm/CountSort.cpp) | O(n+m)|O(n+m)|O(n+m)|稳定
-[桶排序](Algorithm/BucketSort.cpp) | O(n)|O(n)|O(m)|稳定
-[基数排序](Algorithm/RadixSort.h) | O(k*n)|O(n<sup>2</sup>)| |稳定
+| 排序算法                              | 平均时间复杂度        | 最差时间复杂度        | 空间复杂度          | 数据对象稳定性       |
+| ------------------------------------- | --------------------- | --------------------- | ------------------- | -------------------- |
+| [冒泡排序](Algorithm/BubbleSort.h)    | O(n<sup>2</sup>)      | O(n<sup>2</sup>)      | O(1)                | 稳定                 |
+| [选择排序](Algorithm/SelectionSort.h) | O(n<sup>2</sup>)      | O(n<sup>2</sup>)      | O(1)                | 数组不稳定、链表稳定 |
+| [插入排序](Algorithm/InsertSort.h)    | O(n<sup>2</sup>)      | O(n<sup>2</sup>)      | O(1)                | 稳定                 |
+| [快速排序](Algorithm/QuickSort.h)     | O(n*log<sub>2</sub>n) | O(n<sup>2</sup>)      | O(log<sub>2</sub>n) | 不稳定               |
+| [堆排序](Algorithm/HeapSort.cpp)      | O(n*log<sub>2</sub>n) | O(n*log<sub>2</sub>n) | O(1)                | 不稳定               |
+| [归并排序](Algorithm/MergeSort.h)     | O(n*log<sub>2</sub>n) | O(n*log<sub>2</sub>n) | O(n)                | 稳定                 |
+| [希尔排序](Algorithm/ShellSort.h)     | O(n*log<sup>2</sup>n) | O(n<sup>2</sup>)      | O(1)                | 不稳定               |
+| [计数排序](Algorithm/CountSort.cpp)   | O(n+m)                | O(n+m)                | O(n+m)              | 稳定                 |
+| [桶排序](Algorithm/BucketSort.cpp)    | O(n)                  | O(n)                  | O(m)                | 稳定                 |
+| [基数排序](Algorithm/RadixSort.h)     | O(k*n)                | O(n<sup>2</sup>)      |                     | 稳定                 |
 
 > * 均按从小到大排列
 > * k：代表数值中的 “数位” 个数
@@ -1790,32 +2224,32 @@ B 树、B+ 树图片
 
 ### 查找
 
-查找算法 | 平均时间复杂度 | 空间复杂度 | 查找条件
----|---|---|---
-[顺序查找](Algorithm/SequentialSearch.h) | O(n) | O(1) | 无序或有序
-[二分查找（折半查找）](Algorithm/BinarySearch.h) | O(log<sub>2</sub>n)| O(1) | 有序
-[插值查找](Algorithm/InsertionSearch.h) | O(log<sub>2</sub>(log<sub>2</sub>n)) | O(1) | 有序
-[斐波那契查找](Algorithm/FibonacciSearch.cpp) | O(log<sub>2</sub>n) | O(1) | 有序
-[哈希查找](DataStructure/HashTable.cpp) | O(1) | O(n) | 无序或有序
-[二叉查找树（二叉搜索树查找）](Algorithm/BSTSearch.h) |O(log<sub>2</sub>n) |   | 
-[红黑树](DataStructure/RedBlackTree.cpp) |O(log<sub>2</sub>n) | |
-2-3树 | O(log<sub>2</sub>n - log<sub>3</sub>n) |   | 
-B树/B+树 |O(log<sub>2</sub>n) |   | 
+| 查找算法                                              | 平均时间复杂度                         | 空间复杂度 | 查找条件   |
+| ----------------------------------------------------- | -------------------------------------- | ---------- | ---------- |
+| [顺序查找](Algorithm/SequentialSearch.h)              | O(n)                                   | O(1)       | 无序或有序 |
+| [二分查找（折半查找）](Algorithm/BinarySearch.h)      | O(log<sub>2</sub>n)                    | O(1)       | 有序       |
+| [插值查找](Algorithm/InsertionSearch.h)               | O(log<sub>2</sub>(log<sub>2</sub>n))   | O(1)       | 有序       |
+| [斐波那契查找](Algorithm/FibonacciSearch.cpp)         | O(log<sub>2</sub>n)                    | O(1)       | 有序       |
+| [哈希查找](DataStructure/HashTable.cpp)               | O(1)                                   | O(n)       | 无序或有序 |
+| [二叉查找树（二叉搜索树查找）](Algorithm/BSTSearch.h) | O(log<sub>2</sub>n)                    |            |
+| [红黑树](DataStructure/RedBlackTree.cpp)              | O(log<sub>2</sub>n)                    |            |
+| 2-3树                                                 | O(log<sub>2</sub>n - log<sub>3</sub>n) |            |
+| B树/B+树                                              | O(log<sub>2</sub>n)                    |            |
 
 ### 图搜索算法
 
-图搜索算法 |数据结构| 遍历时间复杂度 | 空间复杂度
----|---|---|---
-[BFS广度优先搜索](https://zh.wikipedia.org/wiki/%E5%B9%BF%E5%BA%A6%E4%BC%98%E5%85%88%E6%90%9C%E7%B4%A2)|邻接矩阵<br/>邻接链表|O(\|v\|<sup>2</sup>)<br/>O(\|v\|+\|E\|)|O(\|v\|<sup>2</sup>)<br/>O(\|v\|+\|E\|)
-[DFS深度优先搜索](https://zh.wikipedia.org/wiki/%E6%B7%B1%E5%BA%A6%E4%BC%98%E5%85%88%E6%90%9C%E7%B4%A2)|邻接矩阵<br/>邻接链表|O(\|v\|<sup>2</sup>)<br/>O(\|v\|+\|E\|)|O(\|v\|<sup>2</sup>)<br/>O(\|v\|+\|E\|)
+| 图搜索算法                                                                                              | 数据结构              | 遍历时间复杂度                          | 空间复杂度                              |
+| ------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------- | --------------------------------------- |
+| [BFS广度优先搜索](https://zh.wikipedia.org/wiki/%E5%B9%BF%E5%BA%A6%E4%BC%98%E5%85%88%E6%90%9C%E7%B4%A2) | 邻接矩阵<br/>邻接链表 | O(\|v\|<sup>2</sup>)<br/>O(\|v\|+\|E\|) | O(\|v\|<sup>2</sup>)<br/>O(\|v\|+\|E\|) |
+| [DFS深度优先搜索](https://zh.wikipedia.org/wiki/%E6%B7%B1%E5%BA%A6%E4%BC%98%E5%85%88%E6%90%9C%E7%B4%A2) | 邻接矩阵<br/>邻接链表 | O(\|v\|<sup>2</sup>)<br/>O(\|v\|+\|E\|) | O(\|v\|<sup>2</sup>)<br/>O(\|v\|+\|E\|) |
 
 ### 其他算法
 
-算法 |思想| 应用
----|---|---
-[分治法](https://zh.wikipedia.org/wiki/%E5%88%86%E6%B2%BB%E6%B3%95)|把一个复杂的问题分成两个或更多的相同或相似的子问题，直到最后子问题可以简单的直接求解，原问题的解即子问题的解的合并|[循环赛日程安排问题](https://github.com/huihut/interview/tree/master/Problems/RoundRobinProblem)、排序算法（快速排序、归并排序）
-[动态规划](https://zh.wikipedia.org/wiki/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92)|通过把原问题分解为相对简单的子问题的方式求解复杂问题的方法，适用于有重叠子问题和最优子结构性质的问题|[背包问题](https://github.com/huihut/interview/tree/master/Problems/KnapsackProblem)、斐波那契数列
-[贪心法](https://zh.wikipedia.org/wiki/%E8%B4%AA%E5%BF%83%E6%B3%95)|一种在每一步选择中都采取在当前状态下最好或最优（即最有利）的选择，从而希望导致结果是最好或最优的算法|旅行推销员问题（最短路径问题）、最小生成树、哈夫曼编码
+| 算法                                                                           | 思想                                                                                                               | 应用                                                                                                                             |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| [分治法](https://zh.wikipedia.org/wiki/%E5%88%86%E6%B2%BB%E6%B3%95)            | 把一个复杂的问题分成两个或更多的相同或相似的子问题，直到最后子问题可以简单的直接求解，原问题的解即子问题的解的合并 | [循环赛日程安排问题](https://github.com/huihut/interview/tree/master/Problems/RoundRobinProblem)、排序算法（快速排序、归并排序） |
+| [动态规划](https://zh.wikipedia.org/wiki/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92) | 通过把原问题分解为相对简单的子问题的方式求解复杂问题的方法，适用于有重叠子问题和最优子结构性质的问题               | [背包问题](https://github.com/huihut/interview/tree/master/Problems/KnapsackProblem)、斐波那契数列                               |
+| [贪心法](https://zh.wikipedia.org/wiki/%E8%B4%AA%E5%BF%83%E6%B3%95)            | 一种在每一步选择中都采取在当前状态下最好或最优（即最有利）的选择，从而希望导致结果是最好或最优的算法               | 旅行推销员问题（最短路径问题）、最小生成树、哈夫曼编码                                                                           |
 
 <a id="problems"></a>
 
@@ -1926,21 +2360,21 @@ B树/B+树 |O(log<sub>2</sub>n) |   |
 
 ##### 对比
 
-对比维度 | 多进程 | 多线程 | 总结
----|---|---|---
-数据共享、同步|数据共享复杂，需要用 IPC；数据是分开的，同步简单|因为共享进程数据，数据共享简单，但也是因为这个原因导致同步复杂|各有优势
-内存、CPU|占用内存多，切换复杂，CPU 利用率低|占用内存少，切换简单，CPU 利用率高|线程占优
-创建销毁、切换|创建销毁、切换复杂，速度慢|创建销毁、切换简单，速度很快|线程占优
-编程、调试|编程简单，调试简单|编程复杂，调试复杂|进程占优
-可靠性|进程间不会互相影响|一个线程挂掉将导致整个进程挂掉|进程占优
-分布式|适应于多核、多机分布式；如果一台机器不够，扩展到多台机器比较简单|适应于多核分布式|进程占优
+| 对比维度       | 多进程                                                           | 多线程                                                         | 总结     |
+| -------------- | ---------------------------------------------------------------- | -------------------------------------------------------------- | -------- |
+| 数据共享、同步 | 数据共享复杂，需要用 IPC；数据是分开的，同步简单                 | 因为共享进程数据，数据共享简单，但也是因为这个原因导致同步复杂 | 各有优势 |
+| 内存、CPU      | 占用内存多，切换复杂，CPU 利用率低                               | 占用内存少，切换简单，CPU 利用率高                             | 线程占优 |
+| 创建销毁、切换 | 创建销毁、切换复杂，速度慢                                       | 创建销毁、切换简单，速度很快                                   | 线程占优 |
+| 编程、调试     | 编程简单，调试简单                                               | 编程复杂，调试复杂                                             | 进程占优 |
+| 可靠性         | 进程间不会互相影响                                               | 一个线程挂掉将导致整个进程挂掉                                 | 进程占优 |
+| 分布式         | 适应于多核、多机分布式；如果一台机器不够，扩展到多台机器比较简单 | 适应于多核分布式                                               | 进程占优 |
 
 ##### 优劣
 
-优劣|多进程|多线程
----|---|---
-优点|编程、调试简单，可靠性较高|创建、销毁、切换速度快，内存、资源占用小
-缺点|创建、销毁、切换速度慢，内存、资源占用大|编程、调试复杂，可靠性较差
+| 优劣 | 多进程                                   | 多线程                                   |
+| ---- | ---------------------------------------- | ---------------------------------------- |
+| 优点 | 编程、调试简单，可靠性较高               | 创建、销毁、切换速度快，内存、资源占用小 |
+| 缺点 | 创建、销毁、切换速度慢，内存、资源占用大 | 编程、调试复杂，可靠性较差               |
 
 ##### 选择
 
@@ -2009,6 +2443,8 @@ B树/B+树 |O(log<sub>2</sub>n) |   |
 
 主机字节序又叫 CPU 字节序，其不是由操作系统决定的，而是由 CPU 指令集架构决定的。主机字节序分为两种：
 
+大端小端是针对于类型的字节
+
 * 大端字节序（Big Endian）：高序字节存储在低位地址，低序字节存储在高位地址
 * 小端字节序（Little Endian）：高序字节存储在高位地址，低序字节存储在低位地址
 
@@ -2016,10 +2452,10 @@ B树/B+树 |O(log<sub>2</sub>n) |   |
 
 32 位整数 `0x12345678` 是从起始位置为 `0x00` 的地址开始存放，则：
 
-内存地址 | 0x00 | 0x01 | 0x02 | 0x03
----|---|---|---|---
-大端|12|34|56|78
-小端|78|56|34|12
+| 内存地址 | 0x00 | 0x01 | 0x02 | 0x03 |
+| -------- | ---- | ---- | ---- | ---- |
+| 大端     | 12   | 34   | 56   | 78   |
+| 小端     | 78   | 56   | 34   | 12   |
 
 大端小端图片
 
@@ -2094,15 +2530,15 @@ int main()
 
 ### 各层作用及协议
 
-分层 | 作用 | 协议
----|---|---
-物理层 | 通过媒介传输比特，确定机械及电气规范（比特 Bit） | RJ45、CLOCK、IEEE802.3（中继器，集线器）
-数据链路层|将比特组装成帧和点到点的传递（帧 Frame）| PPP、FR、HDLC、VLAN、MAC（网桥，交换机）
-网络层|负责数据包从源到宿的传递和网际互连（包 Packet）|IP、ICMP、ARP、RARP、OSPF、IPX、RIP、IGRP（路由器）
-运输层|提供端到端的可靠报文传递和错误恢复（ 段Segment）|TCP、UDP、SPX
-会话层|建立、管理和终止会话（会话协议数据单元 SPDU）|NFS、SQL、NETBIOS、RPC
-表示层|对数据进行翻译、加密和压缩（表示协议数据单元 PPDU）|JPEG、MPEG、ASII
-应用层|允许访问OSI环境的手段（应用协议数据单元 APDU）|FTP、DNS、Telnet、SMTP、HTTP、WWW、NFS
+| 分层       | 作用                                                | 协议                                                |
+| ---------- | --------------------------------------------------- | --------------------------------------------------- |
+| 物理层     | 通过媒介传输比特，确定机械及电气规范（比特 Bit）    | RJ45、CLOCK、IEEE802.3（中继器，集线器）            |
+| 数据链路层 | 将比特组装成帧和点到点的传递（帧 Frame）            | PPP、FR、HDLC、VLAN、MAC（网桥，交换机）            |
+| 网络层     | 负责数据包从源到宿的传递和网际互连（包 Packet）     | IP、ICMP、ARP、RARP、OSPF、IPX、RIP、IGRP（路由器） |
+| 运输层     | 提供端到端的可靠报文传递和错误恢复（ 段Segment）    | TCP、UDP、SPX                                       |
+| 会话层     | 建立、管理和终止会话（会话协议数据单元 SPDU）       | NFS、SQL、NETBIOS、RPC                              |
+| 表示层     | 对数据进行翻译、加密和压缩（表示协议数据单元 PPDU） | JPEG、MPEG、ASII                                    |
+| 应用层     | 允许访问OSI环境的手段（应用协议数据单元 APDU）      | FTP、DNS、Telnet、SMTP、HTTP、WWW、NFS              |
 
 
 ### 物理层
@@ -2159,13 +2595,13 @@ int main()
 IP 地址分类：
 * `IP 地址 ::= {<网络号>,<主机号>}`
 
-IP 地址类别 | 网络号 | 网络范围 | 主机号 | IP 地址范围
----|---|---|---|---
-A 类 | 8bit，第一位固定为 0 | 0 —— 127 | 24bit | 1.0.0.0 —— 127.255.255.255
-B 类 | 16bit，前两位固定为  10 | 128.0 —— 191.255 | 16bit | 128.0.0.0 —— 191.255.255.255
-C  类 | 24bit，前三位固定为  110 | 192.0.0 —— 223.255.255 | 8bit | 192.0.0.0 —— 223.255.255.255
-D  类 | 前四位固定为 1110，后面为多播地址
-E  类 | 前五位固定为 11110，后面保留为今后所用
+| IP 地址类别 | 网络号                                 | 网络范围               | 主机号 | IP 地址范围                  |
+| ----------- | -------------------------------------- | ---------------------- | ------ | ---------------------------- |
+| A 类        | 8bit，第一位固定为 0                   | 0 —— 127               | 24bit  | 1.0.0.0 —— 127.255.255.255   |
+| B 类        | 16bit，前两位固定为  10                | 128.0 —— 191.255       | 16bit  | 128.0.0.0 —— 191.255.255.255 |
+| C  类       | 24bit，前三位固定为  110               | 192.0.0 —— 223.255.255 | 8bit   | 192.0.0.0 —— 223.255.255.255 |
+| D  类       | 前四位固定为 1110，后面为多播地址      |
+| E  类       | 前五位固定为 11110，后面保留为今后所用 |
 
 IP 数据报格式：
 
@@ -2221,9 +2657,9 @@ ICMP 报文格式：
 
 端口：
 
-应用程序 | FTP | TELNET | SMTP | DNS | TFTP | HTTP | HTTPS | SNMP  
---- | --- | --- |--- |--- |--- |--- |--- |---   
-端口号 | 21 | 23 | 25 | 53 | 69 | 80 | 443 | 161  
+| 应用程序 | FTP | TELNET | SMTP | DNS | TFTP | HTTP | HTTPS | SNMP |
+| -------- | --- | ------ | ---- | --- | ---- | ---- | ----- | ---- |
+| 端口号   | 21  | 23     | 25   | 53  | 69   | 80   | 443   | 161  |
 
 #### TCP
 
@@ -2449,15 +2885,15 @@ HTTP（HyperText Transfer Protocol，超文本传输协议）是一种用于分�
 
 请求方法
 
-方法 | 意义
---- | ---
-OPTIONS | 请求一些选项信息，允许客户端查看服务器的性能
-GET | 请求指定的页面信息，并返回实体主体
-HEAD | 类似于 get 请求，只不过返回的响应中没有具体的内容，用于获取报头
-POST | 向指定资源提交数据进行处理请求（例如提交表单或者上传文件）。数据被包含在请求体中。POST请求可能会导致新的资源的建立和/或已有资源的修改
-PUT | 从客户端向服务器传送的数据取代指定的文档的内容
-DELETE | 请求服务器删除指定的页面
-TRACE | 回显服务器收到的请求，主要用于测试或诊断
+| 方法    | 意义                                                                                                                                  |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| OPTIONS | 请求一些选项信息，允许客户端查看服务器的性能                                                                                          |
+| GET     | 请求指定的页面信息，并返回实体主体                                                                                                    |
+| HEAD    | 类似于 get 请求，只不过返回的响应中没有具体的内容，用于获取报头                                                                       |
+| POST    | 向指定资源提交数据进行处理请求（例如提交表单或者上传文件）。数据被包含在请求体中。POST请求可能会导致新的资源的建立和/或已有资源的修改 |
+| PUT     | 从客户端向服务器传送的数据取代指定的文档的内容                                                                                        |
+| DELETE  | 请求服务器删除指定的页面                                                                                                              |
+| TRACE   | 回显服务器收到的请求，主要用于测试或诊断                                                                                              |
 
 状态码（Status-Code）
 
@@ -2764,11 +3200,11 @@ ssize_t write(int fd, const void *buf, size_t count);
 
 #### 各平台文件格式
 
-平台 | 可执行文件 | 目标文件 | 动态库/共享对象 | 静态库
----|---|---|---|---
-Windows|exe|obj|dll|lib
-Unix/Linux|ELF、out|o|so|a
-Mac|Mach-O|o|dylib、tbd、framework|a、framework
+| 平台       | 可执行文件 | 目标文件 | 动态库/共享对象       | 静态库       |
+| ---------- | ---------- | -------- | --------------------- | ------------ |
+| Windows    | exe        | obj      | dll                   | lib          |
+| Unix/Linux | ELF、out   | o        | so                    | a            |
+| Mac        | Mach-O     | o        | dylib、tbd、framework | a、framework |
 
 #### 编译链接过程
 
@@ -2799,17 +3235,24 @@ Mac|Mach-O|o|dylib、tbd、framework|a、framework
 
 ##### 目标文件存储结构
 
-段 | 功能
---- | ---
-File Header | 文件头，描述整个文件的文件属性（包括文件是否可执行、是静态链接或动态连接及入口地址、目标硬件、目标操作系统等）
-.text section | 代码段，执行语句编译成的机器代码 
-.data section | 数据段，已初始化的全局变量和局部静态变量
-.bss section | BSS 段（Block Started by Symbol），未初始化的全局变量和局部静态变量（因为默认值为 0，所以只是在此预留位置，不占空间）
-.rodata section | 只读数据段，存放只读数据，一般是程序里面的只读变量（如 const 修饰的变量）和字符串常量
-.comment section | 注释信息段，存放编译器版本信息
-.note.GNU-stack section | 堆栈提示段 
+| 段                      | 功能                                                                                                                  |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| File Header             | 文件头，描述整个文件的文件属性（包括文件是否可执行、是静态链接或动态连接及入口地址、目标硬件、目标操作系统等）        |
+| .text section           | 代码段，执行语句编译成的机器代码                                                                                      |
+| .data section           | 数据段，已初始化的全局变量和局部静态变量                                                                              |
+| .bss section            | BSS 段（Block Started by Symbol），未初始化的全局变量和局部静态变量（因为默认值为 0，所以只是在此预留位置，不占空间） |
+| .rodata section         | 只读数据段，存放只读数据，一般是程序里面的只读变量（如 const 修饰的变量）和字符串常量                                 |
+| .comment section        | 注释信息段，存放编译器版本信息                                                                                        |
+| .note.GNU-stack section | 堆栈提示段                                                                                                            |
 
 > 其他段略
+
+再谈应用程序分段： 数据段、代码段、BSS段以及堆和栈 - 天星的文章 - 知乎
+https://zhuanlan.zhihu.com/p/348026261
+如何理解BSS段不需要占用任何实际空间？ - 海枫的回答 - 知乎
+https://www.zhihu.com/question/293002441/answer/485928256
+
+
 
 #### 链接的接口————符号
 
@@ -2817,11 +3260,11 @@ File Header | 文件头，描述整个文件的文件属性（包括文件是否
 
 如下符号表（Symbol Table）：
 
-Symbol（符号名） | Symbol Value （地址）
---- | ---
-main| 0x100
-Add | 0x123
-... | ...
+| Symbol（符号名） | Symbol Value （地址） |
+| ---------------- | --------------------- |
+| main             | 0x100                 |
+| Add              | 0x123                 |
+| ...              | ...                   |
 
 ### Linux 的共享库（Shared Library）
 
@@ -2981,13 +3424,13 @@ int _tmain(
     TCHAR *envp[]);
 ```
 
-应用程序类型|入口点函数|嵌入可执行文件的启动函数
----|---|---
-处理ANSI字符（串）的GUI应用程序|_tWinMain(WinMain)|WinMainCRTSartup
-处理Unicode字符（串）的GUI应用程序|_tWinMain(wWinMain)|wWinMainCRTSartup
-处理ANSI字符（串）的CUI应用程序|_tmain(Main)|mainCRTSartup
-处理Unicode字符（串）的CUI应用程序|_tmain(wMain)|wmainCRTSartup
-动态链接库（Dynamic-Link Library）|DllMain|_DllMainCRTStartup 
+| 应用程序类型                       | 入口点函数          | 嵌入可执行文件的启动函数 |
+| ---------------------------------- | ------------------- | ------------------------ |
+| 处理ANSI字符（串）的GUI应用程序    | _tWinMain(WinMain)  | WinMainCRTSartup         |
+| 处理Unicode字符（串）的GUI应用程序 | _tWinMain(wWinMain) | wWinMainCRTSartup        |
+| 处理ANSI字符（串）的CUI应用程序    | _tmain(Main)        | mainCRTSartup            |
+| 处理Unicode字符（串）的CUI应用程序 | _tmain(wMain)       | wmainCRTSartup           |
+| 动态链接库（Dynamic-Link Library） | DllMain             | _DllMainCRTStartup       |
 
 ### Windows 的动态链接库（Dynamic-Link Library）
 
